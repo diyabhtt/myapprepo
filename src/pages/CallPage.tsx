@@ -7,7 +7,7 @@ import { useAppContext } from '@/context/AppContext'
 import { buildAssistantHref, buildCallHref, createConversationId } from '@/lib/conversationRouting'
 import { formatLongDate, formatTimer } from '@/lib/formatters'
 import { browserSpeechSupported, createSpeechRecognition, speakText, type BrowserSpeechRecognition } from '@/services/browserSpeech'
-import { answerClaimQuestion, answerGeneralBenefitsQuestion } from '@/services/conversation'
+import { askOrchestrator } from '@/services/orchestratorApi'
 
 type CallStatus = 'ready' | 'listening' | 'thinking' | 'speaking'
 
@@ -152,8 +152,19 @@ export function CallPage() {
     )
   }
 
-  function answerMessage(message: string): void {
-    const response = context ? answerClaimQuestion(message, context, callLanguage) : answerGeneralBenefitsQuestion(message, activeMember, callLanguage)
+  async function answerMessage(message: string): Promise<void> {
+    let response: string
+    try {
+      response = await askOrchestrator({
+        conversationKey: transcriptKey,
+        memberId: activeMember.id,
+        claimId,
+        callerName: activeAuthorization?.authorizedCallerName,
+        question: message,
+      })
+    } catch {
+      response = "I'm having trouble reaching the assistant service right now. Please try again in a moment."
+    }
     setCallStatus('speaking')
     appendAssistantSpeech(response)
     const spoken = isSpeakerOn ? speakText(response, callLanguage, () => setCallStatus('ready')) : false
@@ -169,7 +180,7 @@ export function CallPage() {
     liveTranscriptRef.current = ''
     transcriptBufferRef.current = ''
     if (!message) {
-      setVoiceNotice('I did not catch that. Hold to talk and try again, or use Type instead.')
+      setVoiceNotice('I did not catch that. Tap to talk and try again, or use Type instead.')
       setCallStatus('ready')
       return
     }
@@ -185,7 +196,7 @@ export function CallPage() {
 
   function startListening(): void {
     if (isMuted) {
-      setVoiceNotice('Your microphone is muted. Unmute it before using push to talk.')
+      setVoiceNotice('Your microphone is muted. Unmute it before talking.')
       return
     }
     if (!speechSupported) {
@@ -401,23 +412,20 @@ export function CallPage() {
 
               <button
                 type="button"
+                aria-pressed={callStatus === 'listening'}
                 className={`focus-ring mt-4 flex w-full items-center justify-center rounded-[32px] px-6 py-4 text-base font-semibold ${
                   callStatus === 'listening' ? 'bg-[var(--color-brand-lime)] text-[var(--color-brand-ink)]' : 'bg-white text-[var(--color-brand-ink)]'
                 }`}
-                onPointerDown={(event) => {
-                  event.preventDefault()
-                  startListening()
-                }}
-                onPointerUp={stopRecognition}
-                onPointerCancel={stopRecognition}
-                onPointerLeave={() => {
+                onClick={() => {
                   if (callStatus === 'listening') {
                     stopRecognition()
+                  } else {
+                    startListening()
                   }
                 }}
               >
                 <Mic className="mr-3 h-5 w-5" />
-                {callStatus === 'listening' ? 'Release to send' : 'Hold to talk'}
+                {callStatus === 'listening' ? 'Tap to stop and send' : 'Tap to talk'}
               </button>
 
               <div className="mt-4 grid grid-cols-[minmax(0,1fr)_88px] gap-3">

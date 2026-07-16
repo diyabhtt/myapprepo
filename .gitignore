@@ -1,11 +1,9 @@
-<<<<<<< HEAD
 .env
 __pycache__/
 *.pyc
 .venv/
 venv/
 .adk/
-=======
 node_modules/
 dist/
 coverage/
@@ -13,4 +11,3 @@ coverage/
 .local/
 tmp/
 *.tsbuildinfo
->>>>>>> origin/frontend

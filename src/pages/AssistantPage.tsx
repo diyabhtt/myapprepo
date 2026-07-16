@@ -6,10 +6,12 @@ import { ChatMessageBubble } from '@/components/ChatMessageBubble'
 import { ClaimContextBanner } from '@/components/ClaimContextBanner'
 import { EmptyState } from '@/components/EmptyState'
 import { LanguageModal } from '@/components/LanguageModal'
+import { ThinkingBubble } from '@/components/ThinkingBubble'
 import { useAppContext } from '@/context/AppContext'
 import { buildAssistantHref, buildCallHref, createConversationId, parseConversationKey } from '@/lib/conversationRouting'
 import { relativeToneLabel } from '@/lib/formatters'
-import { answerClaimQuestion, answerGeneralBenefitsQuestion, suggestedQuestions } from '@/services/conversation'
+import { suggestedQuestions } from '@/services/conversation'
+import { askOrchestrator } from '@/services/orchestratorApi'
 import { type ChatMessage } from '@/types'
 
 interface RecentItem {
@@ -43,6 +45,8 @@ export function AssistantPage() {
     getConversationKey,
   } = useAppContext()
   const [showLanguageModal, setShowLanguageModal] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [sendError, setSendError] = useState<string | undefined>(undefined)
   const pendingConversationRef = useRef<{ claimId?: string; id: string } | undefined>(undefined)
 
   if (!conversationId && (!pendingConversationRef.current || pendingConversationRef.current.claimId !== claimId)) {
@@ -127,7 +131,7 @@ export function AssistantPage() {
   }
   const activeMember = member
 
-  function sendMessage(question: string): void {
+  async function sendMessage(question: string): Promise<void> {
     const userMessage: ChatMessage = {
       id: `${conversationKey}-${Date.now()}-user`,
       role: 'user',
@@ -136,18 +140,32 @@ export function AssistantPage() {
       language: chatLanguage,
     }
     appendChatMessage(userMessage, claimId, activeConversationId)
-    const answer = context ? answerClaimQuestion(question, context, chatLanguage) : answerGeneralBenefitsQuestion(question, activeMember, chatLanguage)
-    appendChatMessage(
-      {
-        id: `${conversationKey}-${Date.now()}-assistant`,
-        role: 'assistant',
-        content: answer,
-        timestamp: new Date().toISOString(),
-        language: chatLanguage,
-      },
-      claimId,
-      activeConversationId,
-    )
+    setSendError(undefined)
+    setIsSending(true)
+    try {
+      const answer = await askOrchestrator({
+        conversationKey,
+        memberId: activeMember.id,
+        claimId,
+        callerName: identityMode === 'helper' ? activeAuthorization?.authorizedCallerName : undefined,
+        question,
+      })
+      appendChatMessage(
+        {
+          id: `${conversationKey}-${Date.now()}-assistant`,
+          role: 'assistant',
+          content: answer,
+          timestamp: new Date().toISOString(),
+          language: chatLanguage,
+        },
+        claimId,
+        activeConversationId,
+      )
+    } catch {
+      setSendError('Could not reach the assistant backend. Confirm adk web is running and try again.')
+    } finally {
+      setIsSending(false)
+    }
   }
 
   return (
@@ -224,22 +242,30 @@ export function AssistantPage() {
               </button>
             </div>
 
-            {messages.length > 0 ? (
+            {messages.length > 0 || isSending ? (
               <div className="space-y-4">
                 {messages.map((message) => (
                   <ChatMessageBubble key={message.id} message={message} />
                 ))}
+                {isSending ? <ThinkingBubble /> : null}
               </div>
             ) : (
               <EmptyState title="No conversation yet" description="Ask a question to start the shared assistant." />
             )}
+
+            {sendError ? (
+              <div className="mt-4 rounded-2xl border border-[var(--color-alert-red)]/30 bg-[var(--color-alert-red)]/10 px-4 py-3 text-sm text-[var(--color-alert-red)]">
+                {sendError}
+              </div>
+            ) : null}
 
             <div className="mt-6 flex flex-wrap gap-3">
               {suggestedQuestions(context, chatLanguage).map((question) => (
                 <button
                   key={question.id}
                   type="button"
-                  className="focus-ring rounded-full border border-[var(--color-brand-border)] bg-[var(--color-brand-surface)] px-4 py-2 text-sm text-[var(--color-brand-ink)] hover:-translate-y-0.5"
+                  disabled={isSending}
+                  className="focus-ring rounded-full border border-[var(--color-brand-border)] bg-[var(--color-brand-surface)] px-4 py-2 text-sm text-[var(--color-brand-ink)] hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => sendMessage(question.label)}
                 >
                   {question.label}
@@ -248,7 +274,7 @@ export function AssistantPage() {
             </div>
 
             <div className="mt-6">
-              <ChatComposer placeholder="Type your question…" onSend={sendMessage} />
+              <ChatComposer placeholder="Type your question…" onSend={sendMessage} disabled={isSending} />
             </div>
           </section>
 

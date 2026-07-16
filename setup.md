@@ -2,12 +2,24 @@
 
 ## Overview
 
-This repository contains a frontend-only React application for the Member & Claims Intelligence prototype.
+This repository contains the Member & Claims Intelligence prototype: a React frontend wired to a Python/ADK multi-agent backend.
 
-- Stack: `React` + `TypeScript` + `Vite` + `Tailwind CSS`
-- Data source: local CSV files in `data/structured`
-- No backend is required
+- Frontend stack: `React` + `TypeScript` + `Vite` + `Tailwind CSS`
+- Backend: `google-adk` orchestrator (`orchestrator/agent.py` -> `main.py`) serving 4 sub-agents (claims, benefits, resolution/ROI, compliance/risk) over Vertex AI
+- The chat assistant (both the typed chat and the voice call screen) calls the backend live -- it is not canned/local logic
 - Voice call behavior uses browser speech APIs when available
+
+## Backend (required for the assistant to answer)
+
+From the repo root, with the Python `.venv` set up (see the main project README/CLAUDE notes for `pip install -r requirements.txt`, `.env`, and `gcloud auth application-default login`):
+
+```bash
+./.venv/bin/adk web orchestrator --port 8000 --allow_origins http://localhost:5173
+```
+
+This must be running before the frontend can get real answers. If it's not running, the chat UI will show a "Could not reach the assistant backend" error instead of crashing.
+
+If you serve the frontend from a different port/host, override the backend URL via a `VITE_ORCHESTRATOR_URL` env var (defaults to `http://127.0.0.1:8000`), and pass the matching `--allow_origins` value to `adk web`.
 
 ## Verified Runtime
 
@@ -77,9 +89,9 @@ npm run preview
 
 ## Data Notes
 
-- The UI reads directly from the CSV files in `data/structured`
-- There are no external API calls required for the current frontend
-- If you change CSV contents, restart the dev server if needed and refresh the browser
+- Dashboard/claims list views still read directly from the CSV files in `data/structured` (bundled at build time) for fast local display
+- The AI assistant (chat and voice call) instead calls the live backend, which reads the same CSVs at request time -- so assistant answers reflect the backend's data, not a separate copy
+- If you change CSV contents, restart both the frontend dev server and `adk web`, then refresh the browser
 
 ## Voice and Call Notes
 
