@@ -1,6 +1,16 @@
+<<<<<<< HEAD
 .env
 __pycache__/
 *.pyc
 .venv/
 venv/
 .adk/
+=======
+node_modules/
+dist/
+coverage/
+.DS_Store
+.local/
+tmp/
+*.tsbuildinfo
+>>>>>>> origin/frontend
