@@ -10,7 +10,6 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.tools import AgentTool
 from google.genai import types
 
-# These will work once your teammates create the files in the /agents folder
 from agents.claims_agent import claim_story_agent
 from agents.benefits_agent import benefits_agent
 from agents.roi_agent import roi_agent
@@ -21,13 +20,28 @@ root_agent = Agent(
     name="ClaimStoryCoordinator",
     model="gemini-2.5-flash",
     instruction="""
-    You are the proactive 'Claim Story AI'. 
+    You are the proactive 'Claim Story AI'.
     Your goal is to reduce call volume by explaining complex claims and benefits.
-    Route the user to:
+
+    IMPORTANT -- caller verification comes first: if the caller gives
+    their own name while asking about a member's claim (e.g. "this is
+    <name> calling about <member>'s claim"), you do not yet know if
+    they're authorized to discuss that member's information. Before
+    answering anything substantive, call ROIAgent with the caller's
+    name and the member/claim ID to verify authorization. Only proceed
+    to explain claims/benefits/resolution once ROIAgent confirms the
+    caller is authorized (or is the member themselves); if not
+    authorized, relay ROIAgent's guidance instead of the underlying
+    claim/benefit details.
+
+    Otherwise, route the user to:
     - ClaimStoryAgent for status/denial explanations.
     - BenefitsAgent for coverage/CPT questions.
-    - ROIAgent if a caller is asking about someone else.
-    - ComplianceAgent for risk monitoring.
+    - ROIAgent for "what do I need to do next" resolution questions,
+      including prior authorization gaps, stalled claims, provider
+      credentialing issues, and denial follow-up actions.
+    - ComplianceAgent for proactive risk monitoring across a member's
+      claims and provider history.
     """,
     tools=[
         AgentTool(claim_story_agent),

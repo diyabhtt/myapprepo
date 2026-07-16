@@ -228,7 +228,9 @@ class PreventionRiskAgent:
     def _detect_repeated_denials(
         self,
         claims: pd.DataFrame
-    ) -> Listfindings = []
+    ) -> List[Dict]:
+
+        findings = []
 
         denied_claims = claims[
             claims["claim_status"]
@@ -403,7 +405,9 @@ class PreventionRiskAgent:
     def _detect_claim_level_compliance_flags(
         self,
         claims: pd.DataFrame
-    ) -> Listfindings = []
+    ) -> List[Dict]:
+
+        findings = []
 
         claim_ids = claims["claim_id"].tolist()
 
@@ -521,7 +525,7 @@ class PreventionRiskAgent:
         lines = [
             (
                 f"We reviewed {member_name}'s "
-                f"recentified "
+                f"claims and identified "
                 f"{len(findings)} potential "
                 f"risk finding(s)."
             ),
@@ -584,7 +588,9 @@ class PreventionRiskAgent:
     def _sort_findings(
         self,
         findings: List[Dict]
-    ) -> Listreturn sorted(
+    ) -> List[Dict]:
+
+        return sorted(
             findings,
             key=lambda f:
             self.SEVERITY_PRIORITY.get(
