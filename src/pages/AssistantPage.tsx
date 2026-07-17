@@ -10,7 +10,9 @@ import { ThinkingBubble } from '@/components/ThinkingBubble'
 import { useAppContext } from '@/context/AppContext'
 import { buildAssistantHref, buildCallHref, createConversationId, parseConversationKey } from '@/lib/conversationRouting'
 import { relativeToneLabel } from '@/lib/formatters'
+import { translateUi } from '@/lib/i18n'
 import { suggestedQuestions } from '@/services/conversation'
+import { answerWithLocalDataResult } from '@/services/localAssistant'
 import { askOrchestrator } from '@/services/orchestratorApi'
 import { type ChatMessage } from '@/types'
 
@@ -148,6 +150,7 @@ export function AssistantPage() {
         memberId: activeMember.id,
         claimId,
         callerName: identityMode === 'helper' ? activeAuthorization?.authorizedCallerName : undefined,
+        responseLanguage: chatLanguage,
         question,
       })
       appendChatMessage(
@@ -162,7 +165,24 @@ export function AssistantPage() {
         activeConversationId,
       )
     } catch {
-      setSendError('Could not reach the assistant backend. Confirm adk web is running and try again.')
+      const fallbackAnswer = answerWithLocalDataResult({
+        question,
+        language: chatLanguage,
+        member: activeMember,
+        context,
+      })
+      appendChatMessage(
+        {
+          id: `${conversationKey}-${Date.now()}-assistant-fallback`,
+          role: 'assistant',
+          content: fallbackAnswer.content,
+          timestamp: new Date().toISOString(),
+          language: fallbackAnswer.language,
+        },
+        claimId,
+        activeConversationId,
+      )
+      setSendError(undefined)
     } finally {
       setIsSending(false)
     }
@@ -250,7 +270,10 @@ export function AssistantPage() {
                 {isSending ? <ThinkingBubble /> : null}
               </div>
             ) : (
-              <EmptyState title="No conversation yet" description="Ask a question to start the shared assistant." />
+              <EmptyState
+                title={translateUi(chatLanguage, 'assistantEmptyTitle')}
+                description={translateUi(chatLanguage, 'assistantEmptyDescription')}
+              />
             )}
 
             {sendError ? (
@@ -274,20 +297,20 @@ export function AssistantPage() {
             </div>
 
             <div className="mt-6">
-              <ChatComposer placeholder="Type your question…" onSend={sendMessage} disabled={isSending} />
+              <ChatComposer placeholder={translateUi(chatLanguage, 'assistantPlaceholder')} onSend={sendMessage} disabled={isSending} />
             </div>
           </section>
 
           <div className="motion-surface rounded-3xl border border-[var(--color-brand-border)] bg-white px-4 py-3 text-xs text-[var(--color-brand-muted)]">
             <MessageSquareText className="mr-2 inline h-4 w-4 text-[var(--color-brand-teal)]" />
-            Answers stay grounded in the local member, claim, coverage, scheduling, and ROI records loaded from the CSV files.
+            {translateUi(chatLanguage, 'assistantGrounding')}
           </div>
         </div>
       </section>
 
       {showLanguageModal ? (
         <LanguageModal
-          title="Chat language"
+          title={translateUi(chatLanguage, 'chatLanguageTitle')}
           selectedLanguage={chatLanguage}
           onClose={() => setShowLanguageModal(false)}
           onSelect={(language) => {

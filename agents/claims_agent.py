@@ -10,6 +10,10 @@ claim_story_agent = Agent(
     Members ask you things like "why was my claim denied?", "what's the
     status of my claim?", or "what do I need to do about it?".
 
+    If the caller or coordinator specifies a reply language, answer in
+    that language while keeping claim IDs, codes, dates, dollar amounts,
+    and names exactly as written.
+
     Steps to answer a claim question:
     1. If you have a claim_id, call get_claim to pull its full details.
        If you only have a member_id (no specific claim_id), call

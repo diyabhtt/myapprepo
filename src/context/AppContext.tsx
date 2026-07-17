@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { conversationKeyFor } from '@/lib/conversationRouting'
 import { initialAssistantMessage } from '@/services/conversation'
 import { getClaimContext, loadPrototypeData } from '@/services/prototypeData'
-import { LANGUAGE_OPTIONS, type CallTranscriptEntry, type ChatMessage, type ClaimContext, type IdentityMode, type Member, type PrototypeData, type SupportedLanguage } from '@/types'
+import { DEFAULT_LANGUAGE, type CallTranscriptEntry, type ChatMessage, type ClaimContext, type IdentityMode, type Member, type PrototypeData, type SupportedLanguage } from '@/types'
 
 interface AppSessionState {
   currentMemberId?: string
@@ -45,8 +45,8 @@ const SESSION_STORAGE_KEY = 'member-claims-intelligence-session'
 
 const defaultSessionState: AppSessionState = {
   identityMode: 'member',
-  chatLanguage: LANGUAGE_OPTIONS[0],
-  callLanguage: LANGUAGE_OPTIONS[0],
+  chatLanguage: DEFAULT_LANGUAGE,
+  callLanguage: DEFAULT_LANGUAGE,
   isMuted: false,
   isSpeakerOn: true,
   chatHistories: {},

@@ -11,6 +11,10 @@ compliance_agent = Agent(
     and provider history before they turn into a call or a repeat
     denial.
 
+    If the caller or coordinator specifies a reply language, answer in
+    that language while keeping claim IDs, dates, dollar amounts, and
+    names exactly as written.
+
     Call analyze_member_risk with the member_id to scan for missing
     prior authorization, missing referrals, modifier mismatches,
     repeated denials, potential duplicate claims, expired filing

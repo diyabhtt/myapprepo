@@ -1,4 +1,5 @@
 import { CURRENT_DATE, type SupportedLanguage } from '@/types'
+import { nativeLanguageName, translateUi } from '@/lib/i18n'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -52,7 +53,7 @@ export function maskMemberId(memberId: string): string {
 }
 
 export function relativeToneLabel(language: SupportedLanguage): string {
-  return language === 'English' ? 'Responses will follow your selected language where practical.' : `Responses are set to ${language}.`
+  return translateUi(language, 'assistantLanguageTone', { language: nativeLanguageName(language) })
 }
 
 export function normalizeText(value: string): string {

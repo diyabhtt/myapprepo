@@ -6,7 +6,9 @@ import { LanguageModal } from '@/components/LanguageModal'
 import { useAppContext } from '@/context/AppContext'
 import { buildAssistantHref, buildCallHref, createConversationId } from '@/lib/conversationRouting'
 import { formatLongDate, formatTimer } from '@/lib/formatters'
+import { callSpeakerLabel, translateUi } from '@/lib/i18n'
 import { browserSpeechSupported, createSpeechRecognition, speakText, type BrowserSpeechRecognition } from '@/services/browserSpeech'
+import { answerWithLocalDataResult } from '@/services/localAssistant'
 import { askOrchestrator } from '@/services/orchestratorApi'
 
 type CallStatus = 'ready' | 'listening' | 'thinking' | 'speaking'
@@ -83,8 +85,8 @@ export function CallPage() {
     if (!callStartedAt) {
       startCall()
       const intro = context
-        ? `Secure call started for ${context.claim.serviceName}. ${context.claim.nextStep}`
-        : `Secure call started for ${member.fullName}. Ask about claims, coverage, referrals, or family access.`
+        ? translateUi(callLanguage, 'callIntroClaim', { claimId: context.claim.id, serviceName: context.claim.serviceName })
+        : translateUi(callLanguage, 'callIntroGeneral', { memberName: member.fullName })
       replaceCallTranscript(
         [
           {
@@ -138,36 +140,41 @@ export function CallPage() {
     )
   }
 
-  function appendAssistantSpeech(message: string): void {
-    appendCallTranscript(
-      {
-        id: `${transcriptKey}-${Date.now()}-assistant`,
-        speaker: 'assistant',
-        content: message,
-        timestamp: new Date().toISOString(),
-        language: callLanguage,
-      },
-      claimId,
-      activeConversationId,
-    )
-  }
-
   async function answerMessage(message: string): Promise<void> {
     let response: string
+    let responseLanguage = callLanguage
     try {
       response = await askOrchestrator({
         conversationKey: transcriptKey,
         memberId: activeMember.id,
         claimId,
         callerName: activeAuthorization?.authorizedCallerName,
+        responseLanguage: callLanguage,
         question: message,
       })
     } catch {
-      response = "I'm having trouble reaching the assistant service right now. Please try again in a moment."
+      const fallbackResponse = answerWithLocalDataResult({
+        question: message,
+        language: callLanguage,
+        member: activeMember,
+        context,
+      })
+      response = fallbackResponse.content
+      responseLanguage = fallbackResponse.language
     }
     setCallStatus('speaking')
-    appendAssistantSpeech(response)
-    const spoken = isSpeakerOn ? speakText(response, callLanguage, () => setCallStatus('ready')) : false
+    appendCallTranscript(
+      {
+        id: `${transcriptKey}-${Date.now()}-assistant`,
+        speaker: 'assistant',
+        content: response,
+        timestamp: new Date().toISOString(),
+        language: responseLanguage,
+      },
+      claimId,
+      activeConversationId,
+    )
+    const spoken = isSpeakerOn ? speakText(response, callLanguage, () => setCallStatus('ready'), responseLanguage) : false
     if (!spoken || !isSpeakerOn) {
       setCallStatus('ready')
     }
@@ -180,7 +187,7 @@ export function CallPage() {
     liveTranscriptRef.current = ''
     transcriptBufferRef.current = ''
     if (!message) {
-      setVoiceNotice('I did not catch that. Tap to talk and try again, or use Type instead.')
+      setVoiceNotice(translateUi(callLanguage, 'callMissedSpeech'))
       setCallStatus('ready')
       return
     }
@@ -196,12 +203,12 @@ export function CallPage() {
 
   function startListening(): void {
     if (isMuted) {
-      setVoiceNotice('Your microphone is muted. Unmute it before talking.')
+      setVoiceNotice(translateUi(callLanguage, 'callMutedNotice'))
       return
     }
     if (!speechSupported) {
       setShowTypedComposer(true)
-      setVoiceNotice('Voice recognition is not available in this browser. Use Type instead.')
+      setVoiceNotice(translateUi(callLanguage, 'callBrowserUnsupported'))
       return
     }
 
@@ -215,7 +222,7 @@ export function CallPage() {
     const recognition = createSpeechRecognition(callLanguage)
     if (!recognition) {
       setShowTypedComposer(true)
-      setVoiceNotice('Voice recognition is not available in this browser. Use Type instead.')
+      setVoiceNotice(translateUi(callLanguage, 'callBrowserUnsupported'))
       setCallStatus('ready')
       return
     }
@@ -239,7 +246,11 @@ export function CallPage() {
 
     recognition.onerror = (event) => {
       setCallStatus('ready')
-      setVoiceNotice(event.error === 'not-allowed' ? 'Microphone access was blocked. Use Type instead or allow microphone access.' : `Voice capture error: ${event.error}`)
+      setVoiceNotice(
+        event.error === 'not-allowed'
+          ? translateUi(callLanguage, 'callMicBlocked')
+          : translateUi(callLanguage, 'callVoiceError', { error: event.error }),
+      )
     }
 
     recognition.onend = () => {
@@ -261,12 +272,12 @@ export function CallPage() {
 
   const statusLabel =
     callStatus === 'listening'
-      ? 'Listening'
+      ? translateUi(callLanguage, 'callStatusListening')
       : callStatus === 'thinking'
-        ? 'Thinking'
+        ? translateUi(callLanguage, 'callStatusThinking')
         : callStatus === 'speaking'
-          ? 'Speaking'
-          : 'Ready'
+          ? translateUi(callLanguage, 'callStatusSpeaking')
+          : translateUi(callLanguage, 'callStatusReady')
   const statusAccentClass =
     callStatus === 'listening'
       ? 'text-lime-300'
@@ -335,7 +346,7 @@ export function CallPage() {
 
             {liveTranscript ? (
               <div className="relative mt-8 rounded-[26px] border border-lime-300/25 bg-lime-300/10 px-4 py-4 text-sm text-lime-50">
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-lime-200">You are saying</div>
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-lime-200">{translateUi(callLanguage, 'callLiveTranscript')}</div>
                 <div>{liveTranscript}</div>
               </div>
             ) : null}
@@ -348,8 +359,8 @@ export function CallPage() {
 
             {showTypedComposer ? (
               <div className="relative mt-5 rounded-[26px] bg-white/10 p-3">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-300">Type instead</div>
-                <ChatComposer placeholder="Type instead of speaking…" onSend={sendTypedFallback} />
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-300">{translateUi(callLanguage, 'callTypeInstead')}</div>
+                <ChatComposer placeholder={translateUi(callLanguage, 'callTypePlaceholder')} onSend={sendTypedFallback} />
               </div>
             ) : null}
 
@@ -357,7 +368,7 @@ export function CallPage() {
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-semibold">Call history</div>
-                  <div className="text-[11px] text-slate-300">Saved in this local session</div>
+                  <div className="text-[11px] text-slate-300">{translateUi(callLanguage, 'callHistorySaved')}</div>
                 </div>
                 <div className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium">{callLanguage}</div>
               </div>
@@ -373,7 +384,7 @@ export function CallPage() {
                           : 'bg-white/5 text-slate-200'
                     }`}
                   >
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] opacity-80">{entry.speaker}</div>
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] opacity-80">{callSpeakerLabel(entry.speaker, callLanguage)}</div>
                     <div>{entry.content}</div>
                   </div>
                 ))}
@@ -435,7 +446,7 @@ export function CallPage() {
                   onClick={() => setShowTypedComposer((current) => !current)}
                 >
                   <Type className="h-5 w-5" />
-                  Type instead
+                  {translateUi(callLanguage, 'callTypeInstead')}
                 </button>
 
                 <button
@@ -453,7 +464,7 @@ export function CallPage() {
 
               {!speechSupported ? (
                 <div className="mt-4 text-center text-[11px] text-slate-300">
-                  Voice recognition is unavailable in this browser. Use the typed fallback control instead.
+                  {translateUi(callLanguage, 'callVoiceUnavailable')}
                 </div>
               ) : null}
             </div>
@@ -463,7 +474,7 @@ export function CallPage() {
 
       {showLanguageModal ? (
         <LanguageModal
-          title="Call language"
+          title={translateUi(callLanguage, 'callLanguageTitle')}
           selectedLanguage={callLanguage}
           onClose={() => setShowLanguageModal(false)}
           onSelect={(language) => {

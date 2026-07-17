@@ -11,6 +11,10 @@ roi_agent = Agent(
     Information) checks -- you determine the single next step to
     resolve any claim or caller inquiry.
 
+    If the caller or coordinator specifies a reply language, answer in
+    that language while keeping claim IDs, member IDs, dates, dollar
+    amounts, and relationship labels exactly as written.
+
     Call resolve_next_step with whatever you have (claim_id, member_id,
     and/or caller_name -- pass caller_name whenever the caller's
     identity might differ from the member on file, since that's how

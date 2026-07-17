@@ -1,15 +1,52 @@
-export const CURRENT_DATE = '2026-07-16'
+export const CURRENT_DATE = '2026-07-17'
 
 export const LANGUAGE_OPTIONS = [
+  'Amharic',
+  'Arabic',
+  'Armenian',
+  'Bassa',
+  'Bengali',
+  'Cantonese',
+  'Chinese (Simplified)',
+  'Chinese (Traditional)',
+  'Croatian',
   'English',
-  'Spanish',
-  'Nepali',
+  'Farsi',
+  'French',
+  'German',
+  'Greek',
+  'Gujarati',
+  'Haitian Creole',
+  'Hebrew',
   'Hindi',
+  'Hmong',
+  'Igbo',
+  'Italian',
+  'Japanese',
+  'Khmer',
   'Korean',
+  'Lao',
+  'Mandarin Chinese',
+  'Mien',
+  'Navajo',
+  'Nepali',
+  'Polish',
+  'Portuguese',
+  'Punjabi',
+  'Russian',
+  'Spanish',
+  'Tagalog',
+  'Tamil',
+  'Telugu',
+  'Thai',
+  'Ukrainian',
+  'Urdu',
   'Vietnamese',
+  'Yoruba',
 ] as const
 
 export type SupportedLanguage = (typeof LANGUAGE_OPTIONS)[number]
+export const DEFAULT_LANGUAGE: SupportedLanguage = 'English'
 export type IdentityMode = 'member' | 'helper'
 export type ClaimStatusGroup = 'needs-action' | 'in-progress' | 'completed'
 export type ClaimTab = ClaimStatusGroup | 'all'

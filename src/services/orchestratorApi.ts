@@ -1,3 +1,6 @@
+import { buildLanguageInstruction } from '@/lib/i18n'
+import { type SupportedLanguage } from '@/types'
+
 const ORCHESTRATOR_BASE_URL = (import.meta.env.VITE_ORCHESTRATOR_URL as string | undefined) ?? 'http://127.0.0.1:8000'
 const APP_NAME = 'orchestrator'
 const USER_ID = 'frontend-user'
@@ -86,11 +89,13 @@ export interface AskOrchestratorParams {
   memberId?: string
   claimId?: string
   callerName?: string
+  responseLanguage: SupportedLanguage
   question: string
 }
 
-function buildContextualMessage({ memberId, claimId, callerName, question }: AskOrchestratorParams): string {
+export function buildContextualMessage({ memberId, claimId, callerName, responseLanguage, question }: AskOrchestratorParams): string {
   const contextParts: string[] = []
+  contextParts.push(buildLanguageInstruction(responseLanguage))
   if (callerName) contextParts.push(`Caller identifies themself as: ${callerName}.`)
   if (memberId) contextParts.push(`Member ID: ${memberId}.`)
   if (claimId) contextParts.push(`Claim ID: ${claimId}.`)

@@ -14,6 +14,10 @@ benefits_agent = Agent(
     Members ask you things like "is this covered?", "do I need prior
     authorization?", "what will I owe?", or "is my doctor in-network?".
 
+    If the caller or coordinator specifies a reply language, answer in
+    that language while keeping claim IDs, CPT codes, dates, dollar
+    amounts, and names exactly as written.
+
     Steps to answer a benefits/cost question:
     1. If you have a member_id, call get_member_plan to find their plan_type.
     2. Call check_coverage with the plan_type and CPT code to determine
